@@ -1,0 +1,29 @@
+{
+    "name": "xddesigners/silverstripe-ai",
+    "description": "Core AI platform integration for Silverstripe using Symfony AI",
+    "type": "silverstripe-vendormodule",
+    "keywords": ["SilverStripe", "AI", "Artificial Intelligence", "Symfony", "Symfony AI"],
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Remy Vaartjes",
+            "email": "remy@xd.nl"
+        }
+    ],
+    "require": {
+        "silverstripe/framework": "^6",
+        "symfony/ai-platform": "^0.3.0",
+        "symfony/ai-open-ai-platform": "^0.3.0",
+        "symfony/ai-anthropic-platform": "^0.3.0",
+        "symfony/ai-azure-platform": "^0.3.0",
+        "symfony/ai-vertex-ai-platform": "^0.3.0",
+        "symfony/ai-open-router-platform": "^0.3.0",
+        "symfony/http-client": "^7.4",
+        "symfony/dotenv": "^7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "XD\\SilverstripeAI\\": "src"
+        }
+    }
+}
