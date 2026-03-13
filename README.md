@@ -137,6 +137,10 @@ SilverStripe\Control\Director:
     'ai//$Action': 'MyAIController'
 ```
 
+## Suggested modules
+
+- **[xddesigners/silverstripe-ai-assistant](https://github.com/xddesigners/silverstripe-ai-assistant)** — adds a ready-to-use AI Assistant tab to CMS edit forms, letting editors generate and preview AI-written content for any configured fields.
+
 ## License
 
 BSD-3-Clause © [XD Designers](https://xd.nl)
