@@ -7,6 +7,7 @@ use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use XD\SilverstripeAI\Models\AIRequestLog;
 
 class AIClient
 {
@@ -19,6 +20,20 @@ class AIClient
     private static string $default_instructions = 'You are a helpful assistant and SEO expert.';
 
     /**
+     * Pricing per million tokens for each model: [input, output].
+     * Costs are in USD per 1,000,000 tokens.
+     */
+    private static array $model_pricing = [
+        'gpt-4o-mini'        => ['input' => 0.15,   'output' => 0.60],
+        'gpt-4o'             => ['input' => 2.50,   'output' => 10.00],
+        'gpt-3.5-turbo'      => ['input' => 0.50,   'output' => 1.50],
+        'claude-opus-4-6'    => ['input' => 15.00,  'output' => 75.00],
+        'claude-sonnet-4-6'  => ['input' => 3.00,   'output' => 15.00],
+        'claude-haiku-4-5'   => ['input' => 0.25,   'output' => 1.25],
+        'gemini-1.5-pro'     => ['input' => 1.25,   'output' => 5.00],
+    ];
+
+    /**
      * Generate a text response from a prompt.
      */
     public function generateText(string $text, string $instructions = ''): string
@@ -28,7 +43,7 @@ class AIClient
             Message::ofUser($this->limit($text, 'max_text_length'))
         );
 
-        return $this->invoke($messages);
+        return $this->invoke($messages, 'text');
     }
 
     /**
@@ -51,7 +66,7 @@ class AIClient
             Message::ofUser($prompt)
         );
 
-        $output = $this->invoke($messages);
+        $output = $this->invoke($messages, 'fields');
 
         // Strip markdown code fences if present
         $output = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', trim($output));
@@ -65,22 +80,71 @@ class AIClient
         return $decoded;
     }
 
-    protected function invoke(MessageBag $messages): string
+    protected function invoke(MessageBag $messages, string $mode = 'text'): string
     {
-        $platform = $this->getPlatform();
-        $model    = Environment::getEnv('AI_MODEL') ?: 'gpt-4o-mini';
+        $platformType = strtolower(Environment::getEnv('AI_PLATFORM_TYPE') ?: 'openai');
+        $model        = Environment::getEnv('AI_MODEL') ?: 'gpt-4o-mini';
+        $platform     = $this->getPlatform();
 
-        return $platform->invoke($model, $messages)->asText();
+        $response = $platform->invoke($model, $messages);
+
+        // Extract token usage via Symfony AI metadata
+        $promptTokens     = null;
+        $completionTokens = null;
+
+        try {
+            $usage = $response->getMetadata()->get('token_usage');
+            if ($usage !== null) {
+                $promptTokens = method_exists($usage, 'getPromptTokens')
+                    ? $usage->getPromptTokens()
+                    : ($usage->promptTokens ?? $usage->inputTokens ?? null);
+
+                $completionTokens = method_exists($usage, 'getCompletionTokens')
+                    ? $usage->getCompletionTokens()
+                    : ($usage->completionTokens ?? $usage->outputTokens ?? null);
+            }
+        } catch (\Throwable) {
+            // Usage not available for this platform/version
+        }
+
+        $estimatedCost = $this->estimateCost($model, $promptTokens, $completionTokens);
+
+        AIRequestLog::log($platformType, $model, $mode, $promptTokens, $completionTokens, $estimatedCost);
+
+        return $response->asText();
+    }
+
+    protected function estimateCost(string $model, ?int $promptTokens, ?int $completionTokens): ?float
+    {
+        if ($promptTokens === null && $completionTokens === null) {
+            return null;
+        }
+
+        $pricing = $this->config()->get('model_pricing');
+        $rates   = $pricing[$model] ?? null;
+
+        if (!$rates) {
+            return null;
+        }
+
+        return (($promptTokens ?? 0) / 1_000_000 * $rates['input'])
+             + (($completionTokens ?? 0) / 1_000_000 * $rates['output']);
+    }
+
+    public static function isEnabled(): bool
+    {
+        return (bool)Environment::getEnv('AI_API_KEY');
     }
 
     protected function getPlatform()
     {
-        $platformType = strtolower(Environment::getEnv('AI_PLATFORM_TYPE') ?: 'openai');
-        $apiKey       = Environment::getEnv('AI_API_KEY');
+        $apiKey = Environment::getEnv('AI_API_KEY');
 
         if (!$apiKey) {
             throw new \RuntimeException('AI API key not configured');
         }
+
+        $platformType = strtolower(Environment::getEnv('AI_PLATFORM_TYPE') ?: 'openai');
 
         return match ($platformType) {
             'openai'              => \Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory::create($apiKey),

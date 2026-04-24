@@ -5,6 +5,20 @@ SilverStripe\Control\Director:
   rules:
     'ai//$Action': 'XD\SilverstripeAI\Controllers\AIController'
 
-#XD\SilverstripeAI\Controllers\AIController:
+#XD\SilverstripeAI\Services\AIClient:
 #  max_text_length: 5000
 #  max_instructions_length: 1000
+#  default_instructions: 'You are a helpful assistant and SEO expert.'
+#  model_pricing:           # USD per 1,000,000 tokens
+#    gpt-4o-mini:
+#      input: 0.15
+#      output: 0.60
+#    gpt-4o:
+#      input: 2.50
+#      output: 10.00
+#    claude-sonnet-4-6:
+#      input: 3.00
+#      output: 15.00
+#    claude-haiku-4-5:
+#      input: 0.25
+#      output: 1.25
