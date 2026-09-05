@@ -4,6 +4,7 @@ namespace XD\SilverstripeAI\Models;
 
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Security\Member;
+use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 
 class AIRequestLog extends DataObject
@@ -63,6 +64,18 @@ class AIRequestLog extends DataObject
         return '$' . number_format((float) $this->EstimatedCost, 6);
     }
 
+    public function canView($member = null): bool
+    {
+        if (!$member) {
+            $member = Security::getCurrentUser();
+        }
+        if (!$member) {
+            return false;
+        }
+        return (bool) Permission::checkMember($member, 'ADMIN')
+            || (bool) Permission::checkMember($member, 'CMS_ACCESS_AIUsageAdmin');
+    }
+
     public function canCreate($member = null, $context = []): bool { return false; }
     public function canEdit($member = null): bool { return false; }
     public function canDelete($member = null): bool { return false; }
@@ -76,7 +89,8 @@ class AIRequestLog extends DataObject
         string $mode,
         ?int $promptTokens,
         ?int $completionTokens,
-        ?float $estimatedCost
+        ?float $estimatedCost,
+        ?int $totalTokens = null
     ): void {
         try {
             $log = static::create();
@@ -87,7 +101,7 @@ class AIRequestLog extends DataObject
             $log->TokensAvailable  = $tokensAvailable;
             $log->PromptTokens     = $promptTokens ?? 0;
             $log->CompletionTokens = $completionTokens ?? 0;
-            $log->TotalTokens      = ($promptTokens ?? 0) + ($completionTokens ?? 0);
+            $log->TotalTokens      = $totalTokens ?? (($promptTokens ?? 0) + ($completionTokens ?? 0));
             $log->EstimatedCost    = $estimatedCost ?? 0;
             $log->MemberID         = Security::getCurrentUser()?->ID ?? 0;
             $log->write();

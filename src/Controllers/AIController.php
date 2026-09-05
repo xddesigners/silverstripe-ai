@@ -5,6 +5,7 @@ namespace XD\SilverstripeAI\Controllers;
 use SilverStripe\Control\Controller;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
+use SilverStripe\Control\Director;
 use SilverStripe\Security\Security;
 use Symfony\AI\Platform\Exception\RateLimitExceededException;
 use XD\SilverstripeAI\Services\AIClient;
@@ -15,7 +16,13 @@ class AIController extends Controller
 
     public function generate(HTTPRequest $request): HTTPResponse
     {
-        $this->assertAccess();
+        if ($denied = $this->assertAccess()) {
+            return $denied;
+        }
+
+        if (!$request->isPOST()) {
+            return $this->json(['error' => 'Method not allowed'], 405);
+        }
 
         if ($response = $this->handleBypass($request)) {
             return $response;
@@ -67,14 +74,20 @@ class AIController extends Controller
         }
     }
 
-    protected function assertAccess(): void
+    protected function assertAccess(): ?HTTPResponse
     {
-        Security::permissionFailure($this);
+        // Restrict this paid endpoint to authenticated CMS users. Returns the
+        // permission-failure response to the caller (permissionFailure() only
+        // builds a response, it does not halt execution).
+        if (!Security::getCurrentUser()) {
+            return Security::permissionFailure($this);
+        }
+        return null;
     }
 
     protected function handleBypass(HTTPRequest $request): ?HTTPResponse
     {
-        if ($request->getVar('bypass')) {
+        if (Director::isDev() && $request->getVar('bypass')) {
             return $this->json(['result' => 'AI generation bypassed. Mock response.']);
         }
         return null;
@@ -82,10 +95,17 @@ class AIController extends Controller
 
     protected function json(array $data, int $status = 200): HTTPResponse
     {
+        $body = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if ($body === false) {
+            $body   = '{"error":"Failed to encode response"}';
+            $status = 500;
+        }
+
         $response = $this->getResponse();
-        $response->addHeader('Content-Type', 'application/json');
+        $response->addHeader('Content-Type', 'application/json; charset=utf-8');
         $response->setStatusCode($status);
-        $response->setBody(json_encode($data));
+        $response->setBody($body);
         return $response;
     }
 }

@@ -8,6 +8,8 @@ use SilverStripe\Core\Injector\Injectable;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use XD\SilverstripeAI\Models\AIRequestLog;
+use SilverStripe\Core\Injector\Injector;
+use Psr\Log\LoggerInterface;
 
 class AIClient
 {
@@ -18,6 +20,17 @@ class AIClient
     private static int $max_instructions_length = 1000;
 
     private static string $default_instructions = 'You are a helpful assistant and SEO expert.';
+
+    /**
+     * Best-effort hints: which model-name fragments are expected per platform type.
+     * Only used to log a warning on an obvious AI_PLATFORM_TYPE / AI_MODEL mismatch.
+     * Platform types not listed here (azure, vertex, openrouter) use arbitrary
+     * deployment/model names and are never warned about.
+     */
+    private static array $platform_model_hints = [
+        'openai'    => ['gpt', 'o1', 'o3', 'o4', 'chatgpt'],
+        'anthropic' => ['claude'],
+    ];
 
     /**
      * Pricing per million tokens for each model: [input, output].
@@ -86,11 +99,19 @@ class AIClient
         $model        = Environment::getEnv('AI_MODEL') ?: 'gpt-4o-mini';
         $platform     = $this->getPlatform();
 
+        $this->warnOnModelMismatch($platformType, $model);
+
         $response = $platform->invoke($model, $messages);
+
+        // Resolve the result first: Symfony AI only promotes token_usage into the
+        // result metadata during conversion (DeferredResult::getResult()), so the
+        // metadata is empty until asText()/getResult() has run.
+        $text = $response->asText();
 
         // Extract token usage via Symfony AI metadata
         $promptTokens     = null;
         $completionTokens = null;
+        $totalTokens      = null;
 
         try {
             $usage = $response->getMetadata()->get('token_usage');
@@ -102,6 +123,12 @@ class AIClient
                 $completionTokens = method_exists($usage, 'getCompletionTokens')
                     ? $usage->getCompletionTokens()
                     : ($usage->completionTokens ?? $usage->outputTokens ?? null);
+
+                // Prefer the provider-reported total (covers thinking/tool tokens);
+                // AIRequestLog falls back to prompt + completion when it is null.
+                $totalTokens = method_exists($usage, 'getTotalTokens')
+                    ? $usage->getTotalTokens()
+                    : ($usage->totalTokens ?? null);
             }
         } catch (\Throwable) {
             // Usage not available for this platform/version
@@ -109,9 +136,9 @@ class AIClient
 
         $estimatedCost = $this->estimateCost($model, $promptTokens, $completionTokens);
 
-        AIRequestLog::log($platformType, $model, $mode, $promptTokens, $completionTokens, $estimatedCost);
+        AIRequestLog::log($platformType, $model, $mode, $promptTokens, $completionTokens, $estimatedCost, $totalTokens);
 
-        return $response->asText();
+        return $text;
     }
 
     protected function estimateCost(string $model, ?int $promptTokens, ?int $completionTokens): ?float
@@ -156,6 +183,37 @@ class AIClient
         };
     }
 
+    /**
+     * Log a warning when AI_MODEL clearly does not match AI_PLATFORM_TYPE
+     * (e.g. a "claude-…" model configured against the OpenAI platform). Best-effort
+     * and non-fatal; unknown platform types are skipped.
+     */
+    protected function warnOnModelMismatch(string $platformType, string $model): void
+    {
+        $hints = (array) $this->config()->get('platform_model_hints');
+
+        if (!isset($hints[$platformType])) {
+            return;
+        }
+
+        $needle = strtolower($model);
+        foreach ($hints[$platformType] as $fragment) {
+            if (str_contains($needle, $fragment)) {
+                return;
+            }
+        }
+
+        try {
+            Injector::inst()->get(LoggerInterface::class)->warning(sprintf(
+                'AIClient: AI_MODEL "%s" does not look like a "%s" model — check AI_PLATFORM_TYPE / AI_MODEL.',
+                $model,
+                $platformType
+            ));
+        } catch (\Throwable) {
+            // logging is best-effort; never break a request over a warning
+        }
+    }
+
     protected function resolveInstructions(string $instructions): string
     {
         return $this->limit(
@@ -166,6 +224,6 @@ class AIClient
 
     protected function limit(?string $value, string $configKey): string
     {
-        return substr((string) $value, 0, $this->config()->get($configKey));
+        return mb_substr((string) $value, 0, (int) $this->config()->get($configKey));
     }
 }

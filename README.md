@@ -110,21 +110,41 @@ Response:
 | `429` | Rate limit exceeded (includes `retry_after_seconds`) |
 | `500` | AI generation failed |
 
+## Usage logging & the AI Usage admin
+
+Every request is logged to `AIRequestLog` (platform, model, mode, token counts and estimated cost) and can be browsed under the **AI Usage** CMS section.
+
+**Who can see it**
+
+- **Administrators** always have access.
+- Grant other groups access by ticking **“Access to 'AI Usage' section”** under *Security → Groups → Permissions*. Unlike most CMS sections, holding *“Access to all CMS sections”* does **not** reveal it.
+
+**Hiding it from clients**
+
+Set this in `.env` to hide the section entirely (menu + access), for everyone including admins:
+
+```env
+AI_USAGE_ADMIN_DISABLED=1
+```
+
 ## Extending the controller
 
-By default `AIController::assertAccess()` calls `Security::permissionFailure()`, which means the endpoint is only accessible to logged-in CMS users. Subclass the controller to add your own permission logic:
+By default the endpoint is **POST-only** and `AIController::assertAccess()` requires a logged-in member (returning `Security::permissionFailure()` otherwise). Subclass the controller to add your own permission logic — return an `HTTPResponse` to deny, or `null` to allow:
 
 ```php
+use SilverStripe\Control\HTTPResponse;
+use SilverStripe\Security\Permission;
+use SilverStripe\Security\Security;
 use XD\SilverstripeAI\Controllers\AIController;
 
 class MyAIController extends AIController
 {
-    protected function assertAccess(): void
+    protected function assertAccess(): ?HTTPResponse
     {
-        // e.g. require a specific permission
         if (!Permission::check('MY_AI_PERMISSION')) {
-            parent::assertAccess();
+            return Security::permissionFailure($this);
         }
+        return null;
     }
 }
 ```
