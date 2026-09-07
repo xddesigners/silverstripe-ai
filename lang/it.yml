@@ -1,0 +1,27 @@
+it:
+  XD\SilverstripeAI\Admin\AIUsageAdmin:
+    MENUTITLE: 'Utilizzo AI'
+  XD\SilverstripeAI\Models\AIRequestLog:
+    SINGULARNAME: 'Log richiesta AI'
+    PLURALNAME: 'Log richieste AI'
+    db_Created: 'Data'
+    db_Platform: 'Piattaforma'
+    db_Model: 'Modello'
+    db_Mode: 'Modalità'
+    db_PromptTokens: 'Token prompt'
+    db_CompletionTokens: 'Token completamento'
+    db_TotalTokens: 'Token totali'
+    db_TokensAvailable: 'Token disponibili'
+    db_EstimatedCost: 'Costo stimato'
+    has_one_Member: 'Utente'
+    COST_SHORT: 'Costo stim.'
+  XD\SilverstripeAI\Controllers\AIController:
+    RATE_LIMIT: 'Limite di frequenza superato'
+    METHOD_NOT_ALLOWED: 'Metodo non consentito'
+    NO_INPUT: 'Nessun testo di input fornito'
+    FIELDS_MODE_REQUIRES: 'La modalità campi richiede context[] e fields[]'
+    GENERATION_FAILED: 'Generazione AI non riuscita: {error}'
+    GENERATION_FAILED_GENERIC: 'Generazione AI non riuscita. Riprova più tardi.'
+    RATE_LIMITED: 'Troppe richieste AI. Attendi un momento e riprova.'
+    BYPASS: 'Generazione AI ignorata. Risposta fittizia.'
+    CSRF_FAILURE: 'Token di sicurezza non corrispondente — ricarica la pagina e riprova.'

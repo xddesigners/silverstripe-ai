@@ -1,0 +1,27 @@
+fr:
+  XD\SilverstripeAI\Admin\AIUsageAdmin:
+    MENUTITLE: 'Utilisation de l’IA'
+  XD\SilverstripeAI\Models\AIRequestLog:
+    SINGULARNAME: 'Journal de requête IA'
+    PLURALNAME: 'Journaux de requêtes IA'
+    db_Created: 'Date'
+    db_Platform: 'Plateforme'
+    db_Model: 'Modèle'
+    db_Mode: 'Mode'
+    db_PromptTokens: 'Jetons de prompt'
+    db_CompletionTokens: 'Jetons de complétion'
+    db_TotalTokens: 'Total des jetons'
+    db_TokensAvailable: 'Jetons disponibles'
+    db_EstimatedCost: 'Coût estimé'
+    has_one_Member: 'Utilisateur'
+    COST_SHORT: 'Coût est.'
+  XD\SilverstripeAI\Controllers\AIController:
+    RATE_LIMIT: 'Limite de débit dépassée'
+    METHOD_NOT_ALLOWED: 'Méthode non autorisée'
+    NO_INPUT: 'Aucun texte fourni'
+    FIELDS_MODE_REQUIRES: 'Le mode champs requiert context[] et fields[]'
+    GENERATION_FAILED: 'Échec de la génération IA : {error}'
+    GENERATION_FAILED_GENERIC: 'Échec de la génération IA. Veuillez réessayer plus tard.'
+    RATE_LIMITED: 'Trop de requêtes IA. Veuillez patienter un instant et réessayer.'
+    BYPASS: 'Génération IA contournée. Réponse fictive.'
+    CSRF_FAILURE: 'Jeton de sécurité incorrect — veuillez recharger la page et réessayer.'

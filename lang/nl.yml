@@ -1,0 +1,27 @@
+nl:
+  XD\SilverstripeAI\Admin\AIUsageAdmin:
+    MENUTITLE: 'AI-gebruik'
+  XD\SilverstripeAI\Models\AIRequestLog:
+    SINGULARNAME: 'AI-verzoeklog'
+    PLURALNAME: 'AI-verzoeklogs'
+    db_Created: 'Datum'
+    db_Platform: 'Platform'
+    db_Model: 'Model'
+    db_Mode: 'Modus'
+    db_PromptTokens: 'Prompt-tokens'
+    db_CompletionTokens: 'Completion-tokens'
+    db_TotalTokens: 'Totaal tokens'
+    db_TokensAvailable: 'Tokens beschikbaar'
+    db_EstimatedCost: 'Geschatte kosten'
+    has_one_Member: 'Gebruiker'
+    COST_SHORT: 'Gesch. kosten'
+  XD\SilverstripeAI\Controllers\AIController:
+    RATE_LIMIT: 'Aanvraaglimiet overschreden'
+    METHOD_NOT_ALLOWED: 'Methode niet toegestaan'
+    NO_INPUT: 'Geen invoertekst opgegeven'
+    FIELDS_MODE_REQUIRES: 'Velden-modus vereist context[] en fields[]'
+    GENERATION_FAILED: 'AI-generatie mislukt: {error}'
+    GENERATION_FAILED_GENERIC: 'AI-generatie mislukt. Probeer het later opnieuw.'
+    RATE_LIMITED: 'Te veel AI-verzoeken. Wacht even en probeer opnieuw.'
+    BYPASS: 'AI-generatie overgeslagen. Mock-respons.'
+    CSRF_FAILURE: 'Beveiligingstoken komt niet overeen — herlaad de pagina en probeer opnieuw.'

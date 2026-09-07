@@ -1,0 +1,27 @@
+en:
+  XD\SilverstripeAI\Admin\AIUsageAdmin:
+    MENUTITLE: 'AI Usage'
+  XD\SilverstripeAI\Models\AIRequestLog:
+    SINGULARNAME: 'AI request log'
+    PLURALNAME: 'AI request logs'
+    db_Created: 'Date'
+    db_Platform: 'Platform'
+    db_Model: 'Model'
+    db_Mode: 'Mode'
+    db_PromptTokens: 'Prompt tokens'
+    db_CompletionTokens: 'Completion tokens'
+    db_TotalTokens: 'Total tokens'
+    db_TokensAvailable: 'Tokens available'
+    db_EstimatedCost: 'Estimated cost'
+    has_one_Member: 'User'
+    COST_SHORT: 'Est. cost'
+  XD\SilverstripeAI\Controllers\AIController:
+    RATE_LIMIT: 'Rate limit exceeded'
+    METHOD_NOT_ALLOWED: 'Method not allowed'
+    NO_INPUT: 'No input text provided'
+    FIELDS_MODE_REQUIRES: 'Fields mode requires context[] and fields[]'
+    GENERATION_FAILED: 'AI generation failed: {error}'
+    GENERATION_FAILED_GENERIC: 'AI generation failed. Please try again later.'
+    RATE_LIMITED: 'Too many AI requests. Please wait a moment and try again.'
+    BYPASS: 'AI generation bypassed. Mock response.'
+    CSRF_FAILURE: 'Security token mismatch — please reload the page and try again.'

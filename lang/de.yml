@@ -1,0 +1,27 @@
+de:
+  XD\SilverstripeAI\Admin\AIUsageAdmin:
+    MENUTITLE: 'KI-Nutzung'
+  XD\SilverstripeAI\Models\AIRequestLog:
+    SINGULARNAME: 'KI-Anfrageprotokoll'
+    PLURALNAME: 'KI-Anfrageprotokolle'
+    db_Created: 'Datum'
+    db_Platform: 'Plattform'
+    db_Model: 'Modell'
+    db_Mode: 'Modus'
+    db_PromptTokens: 'Prompt-Tokens'
+    db_CompletionTokens: 'Completion-Tokens'
+    db_TotalTokens: 'Tokens gesamt'
+    db_TokensAvailable: 'Tokens verfügbar'
+    db_EstimatedCost: 'Geschätzte Kosten'
+    has_one_Member: 'Benutzer'
+    COST_SHORT: 'Gesch. Kosten'
+  XD\SilverstripeAI\Controllers\AIController:
+    RATE_LIMIT: 'Ratenlimit überschritten'
+    METHOD_NOT_ALLOWED: 'Methode nicht erlaubt'
+    NO_INPUT: 'Kein Eingabetext angegeben'
+    FIELDS_MODE_REQUIRES: 'Feldmodus erfordert context[] und fields[]'
+    GENERATION_FAILED: 'KI-Generierung fehlgeschlagen: {error}'
+    GENERATION_FAILED_GENERIC: 'KI-Generierung fehlgeschlagen. Bitte versuchen Sie es später erneut.'
+    RATE_LIMITED: 'Zu viele KI-Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut.'
+    BYPASS: 'KI-Generierung übersprungen. Mock-Antwort.'
+    CSRF_FAILURE: 'Sicherheitstoken stimmt nicht überein — bitte laden Sie die Seite neu und versuchen Sie es erneut.'

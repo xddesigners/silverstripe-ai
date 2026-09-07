@@ -26,19 +26,26 @@ class AIRequestLog extends DataObject
         'Member' => Member::class,
     ];
 
-    private static array $summary_fields = [
-        'Created'             => 'Date',
-        'Member.Name'         => 'User',
-        'Platform'            => 'Platform',
-        'Model'               => 'Model',
-        'Mode'                => 'Mode',
-        'FormattedPrompt'     => 'Prompt tokens',
-        'FormattedCompletion' => 'Completion tokens',
-        'FormattedTotal'      => 'Total tokens',
-        'FormattedCost'       => 'Est. cost',
-    ];
-
     private static string $default_sort = 'Created DESC';
+
+    /**
+     * Translatable summary columns. Labels resolve through i18n (lang/*.yml);
+     * the second argument to _t() is the English fallback.
+     */
+    public function summaryFields(): array
+    {
+        return [
+            'Created'             => _t(self::class . '.db_Created', 'Date'),
+            'Member.Name'         => _t(self::class . '.has_one_Member', 'User'),
+            'Platform'            => _t(self::class . '.db_Platform', 'Platform'),
+            'Model'               => _t(self::class . '.db_Model', 'Model'),
+            'Mode'                => _t(self::class . '.db_Mode', 'Mode'),
+            'FormattedPrompt'     => _t(self::class . '.db_PromptTokens', 'Prompt tokens'),
+            'FormattedCompletion' => _t(self::class . '.db_CompletionTokens', 'Completion tokens'),
+            'FormattedTotal'      => _t(self::class . '.db_TotalTokens', 'Total tokens'),
+            'FormattedCost'       => _t(self::class . '.COST_SHORT', 'Est. cost'),
+        ];
+    }
 
     public function getFormattedPrompt(): string
     {
