@@ -7,6 +7,7 @@ use SilverStripe\Core\Environment;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use XD\SilverstripeAI\Models\AIRequestLog;
+use XD\SilverstripeAI\Services\AIClient;
 
 class AIUsageAdmin extends ModelAdmin
 {
@@ -35,6 +36,12 @@ class AIUsageAdmin extends ModelAdmin
         }
 
         if (!$member) {
+            return false;
+        }
+
+        // Hide the whole section when AI is not configured (no AI_API_KEY in .env),
+        // matching AIClient::isEnabled(). Applies to everyone, including admins.
+        if (!AIClient::isEnabled()) {
             return false;
         }
 
