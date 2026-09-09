@@ -29,8 +29,11 @@ jobs:
       - name: Lint PHP files
         run: find src -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
 
-      - name: Install runtime dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist --no-dev
+      # Resolve to a lock file only — no package downloads (avoids GitHub API rate limits) and no plugin
+      # execution (avoids the allow-plugins gate). `composer audit` reads the lock via the Packagist
+      # advisory API, so the full install isn't needed just to check for known vulnerabilities.
+      - name: Resolve dependencies (lock only)
+        run: composer update --no-install --no-interaction --no-plugins
 
       - name: Security audit
-        run: composer audit
+        run: composer audit --locked --no-dev
