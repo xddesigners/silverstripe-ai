@@ -1,7 +1,8 @@
 # silverstripe-ai
 
 Core AI platform integration for SilverStripe, built on [Symfony AI](https://symfony.com/doc/current/ai.html).
-Provides a unified `AIClient` service and a `/ai/generate` endpoint that works with OpenAI, Anthropic, Azure OpenAI, Google Vertex AI, and OpenRouter.
+Provides a unified `AIClient` service and a `/ai/generate` endpoint that works with OpenAI, Anthropic,
+Google (Gemini & Vertex AI), Azure OpenAI, Mistral, Ollama, OpenRouter, and any OpenAI-compatible endpoint.
 
 ## Requirements
 
@@ -19,20 +20,44 @@ composer require xddesigners/silverstripe-ai
 Add the following to your `.env` file:
 
 ```env
-AI_PLATFORM_TYPE="openai"   # openai | anthropic | azure | vertex | openrouter
+AI_PLATFORM_TYPE="openai"   # see the table below
 AI_MODEL="gpt-4o-mini"
 AI_API_KEY="sk-xxx"
 ```
 
 ### Supported platforms and models
 
-| Platform type | Example models |
-|---|---|
-| `openai` | `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo` |
-| `anthropic` | `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5` |
-| `azure` | `gpt-4o`, `gpt-4o-mini` |
-| `vertex` | `gemini-1.5-pro` |
-| `openrouter` | any model available via OpenRouter |
+| Platform type | Example models | Extra environment variables |
+|---|---|---|
+| `openai` | `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo` | — |
+| `anthropic` (`claude`) | `claude-sonnet-4-6`, `claude-haiku-4-5` | — |
+| `gemini` (`google`) | `gemini-2.0-flash`, `gemini-1.5-pro` | — |
+| `azure` | your deployment name | `AI_PLATFORM_BASE_URL` (resource endpoint), `AI_AZURE_DEPLOYMENT`, `AI_AZURE_API_VERSION` (default `2024-10-21`) |
+| `vertex` | `gemini-1.5-pro` | `AI_VERTEX_LOCATION`, `AI_VERTEX_PROJECT` (key optional; ADC supported) |
+| `mistral` | `mistral-large-latest`, `mistral-small-latest` | — (native bridge; `AI_PLATFORM_BASE_URL` only used for the generic fallback) |
+| `ollama` | any locally pulled model | `AI_PLATFORM_BASE_URL` (optional; defaults to `http://localhost:11434`) |
+| `openrouter` | any OpenRouter slug, e.g. `anthropic/claude-sonnet-5` | `AI_PLATFORM_BASE_URL` (optional; set to route in-region — see below) |
+| `generic` | any model on the endpoint | `AI_PLATFORM_BASE_URL` (required) — any OpenAI-compatible endpoint |
+
+`mistral` uses the native Symfony Mistral bridge (bundled), falling back to Mistral's OpenAI-compatible EU
+endpoint if that package is removed. `ollama` and `generic` reach their providers through the OpenAI-compatible
+**generic** bridge, so no extra package is needed.
+
+### EU data residency
+
+Keep inference inside the EU by pointing an OpenAI-compatible platform at an in-region endpoint via
+`AI_PLATFORM_BASE_URL`:
+
+```env
+# OpenRouter EU entry point (Business plan). Same key and model slugs; requests are processed in the EU.
+AI_PLATFORM_TYPE="openrouter"
+AI_PLATFORM_BASE_URL="https://eu.openrouter.ai/api"
+AI_MODEL="anthropic/claude-sonnet-5"
+AI_API_KEY="sk-or-xxx"
+```
+
+Other EU-friendly options: `mistral` (Mistral’s EU platform, the default endpoint), `azure` in an EU region,
+or `ollama`/`generic` against a model you host in the EU — data then never leaves your infrastructure.
 
 ### Optional YAML configuration
 
@@ -43,6 +68,12 @@ XD\SilverstripeAI\Services\AIClient:
   max_text_length: 5000
   max_instructions_length: 1000
   default_instructions: 'You are a helpful assistant and SEO expert.'
+  # Cost estimates are best-effort. Add or override per-model rates (USD per 1,000,000 tokens);
+  # keys may be a bare model name or an OpenRouter-style "vendor/model" slug.
+  model_pricing:
+    'anthropic/claude-sonnet-5':
+      input: 3.00
+      output: 15.00
 ```
 
 ## Usage
@@ -114,6 +145,8 @@ Response:
 
 Every request is logged to `AIRequestLog` (platform, model, mode, token counts and estimated cost) and can be browsed under the **AI Usage** CMS section.
 
+> **Token usage is captured for every supported provider.** Native bridges (OpenAI, Anthropic, Gemini, Vertex AI, Mistral) report it through Symfony AI's `token_usage` metadata; for OpenAI-compatible endpoints that don't surface that metadata (OpenRouter, Ollama, the generic bridge) the counts are read from the response's `usage` block as a fallback. **Cost** is only estimated when the model is listed in `model_pricing` (see below) — otherwise the request is logged with token counts but no cost.
+
 **Who can see it**
 
 - **Administrators** always have access.
@@ -126,6 +159,25 @@ Set this in `.env` to hide the section entirely (menu + access), for everyone in
 ```env
 AI_USAGE_ADMIN_DISABLED=1
 ```
+
+## Privacy & data processing
+
+This module sends the text you pass to `AIClient` — page content, field values, prompts — to the third-party
+AI provider you configure. Treat that as a data-processing step:
+
+- **Personal data / GDPR:** if that content can contain personal data, the AI provider acts as a processor.
+  Choose the provider and region accordingly, record it in your processing register, and cover it in your
+  privacy policy / DPA. For EU data residency, route through an in-region endpoint (see *EU data residency*
+  above) — e.g. OpenRouter's `eu.openrouter.ai`, Mistral's EU platform, Azure in an EU region, or a
+  self-hosted model.
+- **What is logged:** `AIRequestLog` stores only metadata (platform, model, token counts, estimated cost and
+  the requesting CMS member) — **never** the prompt or the response. Enabling the AI Usage admin does not
+  create a store of processed content.
+- **Endpoint trust:** your `AI_API_KEY` is sent as a bearer token to `AI_PLATFORM_BASE_URL` (for the
+  `openrouter` / `generic` / `mistral` / `ollama` types). Point it only at endpoints you trust.
+- **Access & hardening:** `/ai/generate` requires a logged-in CMS user (`CMS_ACCESS`), is POST-only,
+  CSRF-protected and per-member rate limited. Do not run the site in dev mode in production — dev mode returns
+  raw error detail to the client.
 
 ## Extending the controller
 

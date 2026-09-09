@@ -24,12 +24,14 @@ class AIClient
     /**
      * Best-effort hints: which model-name fragments are expected per platform type.
      * Only used to log a warning on an obvious AI_PLATFORM_TYPE / AI_MODEL mismatch.
-     * Platform types not listed here (azure, vertex, openrouter) use arbitrary
-     * deployment/model names and are never warned about.
+     * Platform types not listed here (azure, vertex, openrouter, ollama, generic) use arbitrary
+     * deployment/model/slug names and are never warned about.
      */
     private static array $platform_model_hints = [
         'openai'    => ['gpt', 'o1', 'o3', 'o4', 'chatgpt'],
         'anthropic' => ['claude'],
+        'gemini'    => ['gemini', 'gemma'],
+        'mistral'   => ['mistral', 'magistral', 'ministral', 'codestral', 'pixtral', 'devstral'],
     ];
 
     /**
@@ -57,6 +59,24 @@ class AIClient
         );
 
         return $this->invoke($messages, 'text');
+    }
+
+    /**
+     * Translate a JSON payload of field values.
+     *
+     * Unlike generateText(), the input is NOT truncated — a translation must never silently drop content —
+     * and no default (SEO) instructions are applied. The caller supplies the full system instruction and is
+     * responsible for validating/decoding the returned string (models occasionally wrap JSON in fences).
+     * Logged under the `translate` mode so translation spend is filterable in the AI Usage admin.
+     */
+    public function translateJson(string $json, string $instructions): string
+    {
+        $messages = new MessageBag(
+            Message::forSystem($instructions),
+            Message::ofUser($json)
+        );
+
+        return $this->invoke($messages, 'translate');
     }
 
     /**
@@ -134,6 +154,26 @@ class AIClient
             // Usage not available for this platform/version
         }
 
+        // Fallback for bridges that don't surface token_usage metadata (the generic OpenAI-compatible
+        // bridge and everything built on it: OpenRouter, Ollama, and Mistral's compat endpoint). Read the
+        // "usage" block straight from the raw response body. Only runs when metadata gave us nothing, so
+        // native bridges (OpenAI/Anthropic/Gemini/Vertex/Mistral) keep their richer metadata untouched.
+        if ($promptTokens === null && $completionTokens === null && $totalTokens === null) {
+            try {
+                $data  = $response->getRawResult()?->getData();
+                $usage = is_array($data) ? ($data['usage'] ?? null) : null;
+
+                if (is_array($usage)) {
+                    // Chat Completions shape (prompt_/completion_) with a Responses-API fallback (input_/output_).
+                    $promptTokens     = $usage['prompt_tokens']     ?? $usage['input_tokens']  ?? null;
+                    $completionTokens = $usage['completion_tokens'] ?? $usage['output_tokens'] ?? null;
+                    $totalTokens      = $usage['total_tokens']      ?? null;
+                }
+            } catch (\Throwable) {
+                // Raw body unavailable (e.g. a streamed response) — leave usage null.
+            }
+        }
+
         $estimatedCost = $this->estimateCost($model, $promptTokens, $completionTokens);
 
         AIRequestLog::log($platformType, $model, $mode, $promptTokens, $completionTokens, $estimatedCost, $totalTokens);
@@ -148,7 +188,11 @@ class AIClient
         }
 
         $pricing = $this->config()->get('model_pricing');
-        $rates   = $pricing[$model] ?? null;
+        // Match the exact model, then fall back to the slug without its provider prefix so that
+        // OpenRouter/generic slugs (e.g. "openai/gpt-4o-mini") resolve to the same rates as "gpt-4o-mini".
+        $rates   = $pricing[$model]
+            ?? $pricing[preg_replace('#^[^/]+/#', '', $model)]
+            ?? null;
 
         if (!$rates) {
             return null;
@@ -173,14 +217,83 @@ class AIClient
 
         $platformType = strtolower(Environment::getEnv('AI_PLATFORM_TYPE') ?: 'openai');
 
+        // Optional OpenAI-compatible endpoint override. Used to reach in-region entry points
+        // (e.g. OpenRouter EU: https://eu.openrouter.ai/api), self-hosted models, or any
+        // OpenAI-compatible proxy. When unset, the direct providers keep their default endpoints.
+        $baseUrl = Environment::getEnv('AI_PLATFORM_BASE_URL') ?: null;
+
         return match ($platformType) {
             'openai'              => \Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory::create($apiKey),
             'claude', 'anthropic' => \Symfony\AI\Platform\Bridge\Anthropic\PlatformFactory::create($apiKey),
-            'azure'               => \Symfony\AI\Platform\Bridge\Azure\PlatformFactory::create($apiKey),
-            'vertex'              => \Symfony\AI\Platform\Bridge\VertexAI\PlatformFactory::create($apiKey),
-            'openrouter'          => \Symfony\AI\Platform\Bridge\OpenRouter\PlatformFactory::create($apiKey),
+            'gemini', 'google'    => \Symfony\AI\Platform\Bridge\Gemini\PlatformFactory::create($apiKey),
+
+            // OpenRouter: the default US endpoint, or an in-region entry point (e.g.
+            // https://eu.openrouter.ai/api for EU data residency) when AI_PLATFORM_BASE_URL is set.
+            // Same key, same model slugs — OpenRouter is OpenAI-compatible, so the generic bridge
+            // handles the regional base URL.
+            'openrouter'          => $baseUrl
+                ? \Symfony\AI\Platform\Bridge\Generic\PlatformFactory::create($baseUrl, $apiKey)
+                : \Symfony\AI\Platform\Bridge\OpenRouter\PlatformFactory::create($apiKey),
+
+            // Azure OpenAI is addressed by resource endpoint + deployment + api-version (not a bare key).
+            // Endpoint via AI_PLATFORM_BASE_URL (e.g. https://my-resource.openai.azure.com).
+            'azure'               => \Symfony\AI\Platform\Bridge\Azure\OpenAi\PlatformFactory::create(
+                $this->requireEnv('AI_PLATFORM_BASE_URL', 'azure'),
+                $this->requireEnv('AI_AZURE_DEPLOYMENT', 'azure'),
+                Environment::getEnv('AI_AZURE_API_VERSION') ?: '2024-10-21',
+                $apiKey
+            ),
+
+            // Vertex AI is addressed by location + project; the API key is optional (ADC is common).
+            'vertex'              => \Symfony\AI\Platform\Bridge\VertexAi\PlatformFactory::create(
+                $this->requireEnv('AI_VERTEX_LOCATION', 'vertex'),
+                $this->requireEnv('AI_VERTEX_PROJECT', 'vertex'),
+                $apiKey
+            ),
+
+            // Mistral (EU/FR): prefer the native Symfony bridge when symfony/ai-mistral-platform is
+            // installed — it ships Mistral's model catalog and a token-usage extractor, so cost/usage is
+            // logged. Without the package, fall back to Mistral's OpenAI-compatible EU endpoint via the
+            // generic bridge (works, but the generic converter reports no token_usage). Override with
+            // AI_PLATFORM_BASE_URL.
+            'mistral'             => class_exists(\Symfony\AI\Platform\Bridge\Mistral\PlatformFactory::class)
+                ? \Symfony\AI\Platform\Bridge\Mistral\PlatformFactory::create($apiKey)
+                : \Symfony\AI\Platform\Bridge\Generic\PlatformFactory::create($baseUrl ?: 'https://api.mistral.ai', $apiKey),
+
+            // Ollama (self-hosted) speaks the OpenAI-compatible API, so it runs through the generic
+            // bridge — no extra package required. Defaults to a local Ollama; override with AI_PLATFORM_BASE_URL.
+            'ollama'              => \Symfony\AI\Platform\Bridge\Generic\PlatformFactory::create(
+                $baseUrl ?: 'http://localhost:11434',
+                $apiKey
+            ),
+
+            // Any other OpenAI-compatible endpoint (self-hosted vLLM/LM Studio, an EU proxy, …).
+            'generic'             => \Symfony\AI\Platform\Bridge\Generic\PlatformFactory::create(
+                $this->requireEnv('AI_PLATFORM_BASE_URL', 'generic'),
+                $apiKey
+            ),
+
             default               => throw new \InvalidArgumentException("Unknown AI platform type: $platformType"),
         };
+    }
+
+    /**
+     * Read a required environment variable for a platform, with a clear error when it is missing
+     * (Azure/Vertex/generic need more than an API key).
+     */
+    protected function requireEnv(string $key, string $platformType): string
+    {
+        $value = Environment::getEnv($key);
+
+        if ($value === false || $value === null || $value === '') {
+            throw new \RuntimeException(sprintf(
+                'AI platform "%s" requires the %s environment variable to be set.',
+                $platformType,
+                $key
+            ));
+        }
+
+        return (string) $value;
     }
 
     /**

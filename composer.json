@@ -19,12 +19,23 @@
         "symfony/ai-azure-platform": "^0.3.0",
         "symfony/ai-vertex-ai-platform": "^0.3.0",
         "symfony/ai-open-router-platform": "^0.3.0",
+        "symfony/ai-gemini-platform": "^0.3.0",
+        "symfony/ai-generic-platform": "^0.3.0",
+        "symfony/ai-mistral-platform": "^0.3.0",
         "symfony/http-client": "^7.4",
         "symfony/dotenv": "^7.4"
+    },
+    "suggest": {
+        "symfony/ai-meta-platform": "Optional Meta Llama bridge for a custom platform type."
     },
     "autoload": {
         "psr-4": {
             "XD\\SilverstripeAI\\": "src"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
         }
     }
 }
