@@ -11,7 +11,6 @@
         }
     ],
     "require": {
-        "php": "^8.1",
         "silverstripe/framework": "^6",
         "symfony/ai-platform": "^0.3.0",
         "symfony/ai-open-ai-platform": "^0.3.0",
