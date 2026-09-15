@@ -1,6 +1,11 @@
 nl:
   XD\SilverstripeAI\Admin\AIUsageAdmin:
     MENUTITLE: 'AI-gebruik'
+    USAGE_TOTAL: 'Totaal AI-gebruik'
+    USAGE_PER_MONTH: 'Gebruik per maand'
+    USAGE_MONTH: 'Maand'
+    USAGE_REQUESTS: 'Verzoeken'
+    USAGE_NONE: 'Nog geen AI-gebruik geregistreerd.'
   XD\SilverstripeAI\Models\AIRequestLog:
     SINGULARNAME: 'AI-verzoeklog'
     PLURALNAME: 'AI-verzoeklogs'

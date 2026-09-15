@@ -1,6 +1,11 @@
 it:
   XD\SilverstripeAI\Admin\AIUsageAdmin:
     MENUTITLE: 'Utilizzo AI'
+    USAGE_TOTAL: 'Utilizzo totale IA'
+    USAGE_PER_MONTH: 'Utilizzo per mese'
+    USAGE_MONTH: 'Mese'
+    USAGE_REQUESTS: 'Richieste'
+    USAGE_NONE: 'Nessun utilizzo IA registrato finora.'
   XD\SilverstripeAI\Models\AIRequestLog:
     SINGULARNAME: 'Log richiesta AI'
     PLURALNAME: 'Log richieste AI'

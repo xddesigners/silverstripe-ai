@@ -1,6 +1,11 @@
 de:
   XD\SilverstripeAI\Admin\AIUsageAdmin:
     MENUTITLE: 'KI-Nutzung'
+    USAGE_TOTAL: 'Gesamte KI-Nutzung'
+    USAGE_PER_MONTH: 'Nutzung pro Monat'
+    USAGE_MONTH: 'Monat'
+    USAGE_REQUESTS: 'Anfragen'
+    USAGE_NONE: 'Noch keine KI-Nutzung erfasst.'
   XD\SilverstripeAI\Models\AIRequestLog:
     SINGULARNAME: 'KI-Anfrageprotokoll'
     PLURALNAME: 'KI-Anfrageprotokolle'
