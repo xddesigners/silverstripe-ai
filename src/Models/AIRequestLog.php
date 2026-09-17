@@ -29,6 +29,23 @@ class AIRequestLog extends DataObject
     private static string $default_sort = 'Created DESC';
 
     /**
+     * Currency shown for the estimated cost. Provider pricing is in USD, so the stored EstimatedCost is a USD
+     * estimate; set `currency_rate` to a USD→X multiplier (e.g. 0.92 for EUR) to convert the displayed amount.
+     * Both default to a no-op (USD, ×1). Configure per project:
+     *   XD\SilverstripeAI\Models\AIRequestLog:
+     *     currency_symbol: '€'
+     *     currency_rate: 0.92
+     *
+     * @config
+     */
+    private static string $currency_symbol = '$';
+
+    /**
+     * @config
+     */
+    private static float $currency_rate = 1.0;
+
+    /**
      * Translatable summary columns. Labels resolve through i18n (lang/*.yml);
      * the second argument to _t() is the English fallback.
      */
@@ -68,7 +85,19 @@ class AIRequestLog extends DataObject
             return '—';
         }
 
-        return '$' . number_format((float) $this->EstimatedCost, 6);
+        return self::formatCost((float) $this->EstimatedCost);
+    }
+
+    /**
+     * Format a (USD) cost estimate with the configured currency symbol and rate. Shared by the grid column
+     * and the AI Usage summary so both honour `currency_symbol` / `currency_rate`.
+     */
+    public static function formatCost(float $usdAmount, int $decimals = 6): string
+    {
+        $symbol = (string) static::config()->get('currency_symbol');
+        $rate = (float) static::config()->get('currency_rate');
+
+        return $symbol . number_format($usdAmount * $rate, $decimals);
     }
 
     public function canView($member = null): bool

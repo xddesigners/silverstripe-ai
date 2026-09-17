@@ -160,6 +160,18 @@ Set this in `.env` to hide the section entirely (menu + access), for everyone in
 AI_USAGE_ADMIN_DISABLED=1
 ```
 
+**Currency (default USD)**
+
+The summary and the per-row cost show the estimate in **USD** by default, because provider pricing is in USD. To display another currency, set the symbol and an optional USD→currency rate — the stored value stays USD; the rate only affects display:
+
+```yaml
+XD\SilverstripeAI\Models\AIRequestLog:
+  currency_symbol: '€'
+  currency_rate: 0.92   # USD→EUR; leave at 1.0 to keep the raw USD amount with a different symbol
+```
+
+The figure remains an estimate, so set `currency_rate` to whatever approximate rate you want reflected.
+
 ## Privacy & data processing
 
 This module sends the text you pass to `AIClient` — page content, field values, prompts — to the third-party

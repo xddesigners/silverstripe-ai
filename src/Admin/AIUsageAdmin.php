@@ -170,9 +170,11 @@ class AIUsageAdmin extends ModelAdmin
 
         $money = static function (float $v): string {
             if ($v <= 0) {
-                return '$0.00';
+                return AIRequestLog::formatCost(0.0, 2);
             }
-            return $v < 0.0001 ? '&lt; $0.0001' : '$' . number_format($v, 4);
+            return $v < 0.0001
+                ? '&lt; ' . AIRequestLog::formatCost(0.0001, 4)
+                : AIRequestLog::formatCost($v, 4);
         };
 
         $thL = 'style="text-align:left;padding:6px 10px;border-bottom:2px solid #ccc;"';
