@@ -21,7 +21,7 @@ class AIUsageAdmin extends ModelAdmin
 
     private static string $menu_title = 'AI Usage';
 
-    private static string $menu_icon_class = 'font-icon-chart-line';
+    private static string $menu_icon_class = 'font-icon-integration';
 
     private static array $managed_models = [
         AIRequestLog::class,
