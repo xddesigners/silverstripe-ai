@@ -37,8 +37,9 @@ class AIUsageAdmin extends ModelAdmin
 
     /**
      * AIRequestLog rows are written by the app, never created by hand — hide the CSV import form.
+     * ModelAdmin::$showImportForm is a public instance property (not config), so this override must match it.
      */
-    private static $showImportForm = false;
+    public $showImportForm = false;
 
     public function canView($member = null)
     {
