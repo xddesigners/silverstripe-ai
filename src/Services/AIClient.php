@@ -7,6 +7,7 @@ use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\PlatformInterface;
 use XD\SilverstripeAI\Models\AIRequestLog;
 use SilverStripe\Core\Injector\Injector;
 use Psr\Log\LoggerInterface;
@@ -207,7 +208,7 @@ class AIClient
         return (bool)Environment::getEnv('AI_API_KEY');
     }
 
-    protected function getPlatform()
+    protected function getPlatform(): PlatformInterface
     {
         $apiKey = Environment::getEnv('AI_API_KEY');
 
@@ -222,7 +223,7 @@ class AIClient
         // OpenAI-compatible proxy. When unset, the direct providers keep their default endpoints.
         $baseUrl = Environment::getEnv('AI_PLATFORM_BASE_URL') ?: null;
 
-        return match ($platformType) {
+        $platform = match ($platformType) {
             'openai'              => \Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory::create($apiKey),
             'claude', 'anthropic' => \Symfony\AI\Platform\Bridge\Anthropic\PlatformFactory::create($apiKey),
             'gemini', 'google'    => \Symfony\AI\Platform\Bridge\Gemini\PlatformFactory::create($apiKey),
@@ -273,8 +274,19 @@ class AIClient
                 $apiKey
             ),
 
-            default               => throw new \InvalidArgumentException("Unknown AI platform type: $platformType"),
+            default               => null,
         };
+
+        // Extension point: let project code supply a platform for a custom AI_PLATFORM_TYPE, or
+        // override a built-in one. Implement updatePlatform() on an Extension applied to AIClient and
+        // return any Symfony AI PlatformInterface — a bundled bridge factory or your own implementation.
+        $this->extend('updatePlatform', $platform, $platformType, $apiKey, $baseUrl);
+
+        if (!$platform instanceof PlatformInterface) {
+            throw new \InvalidArgumentException("Unknown AI platform type: $platformType");
+        }
+
+        return $platform;
     }
 
     /**

@@ -191,6 +191,37 @@ AI provider you configure. Treat that as a data-processing step:
   CSRF-protected and per-member rate limited. Do not run the site in dev mode in production — dev mode returns
   raw error detail to the client.
 
+## Extending: custom platforms & models
+
+**Extra models** need no code. Set `AI_MODEL` to any model your platform supports, and (for cost estimates) add its rate under `model_pricing` — see [Optional YAML configuration](#optional-yaml-configuration).
+
+**Extra platforms / providers** are added in code via the `updatePlatform` extension hook on `AIClient`. A "platform" is any Symfony AI [`PlatformInterface`](https://symfony.com/doc/current/ai.html) — a bundled bridge factory or your own implementation. Return one from the hook to add a new `AI_PLATFORM_TYPE`, or to override a built-in one. Token usage, cost estimation and request logging are handled by `AIClient` for any platform, so nothing else is required.
+
+```php
+use SilverStripe\Core\Extension;
+use Symfony\AI\Platform\PlatformInterface;
+
+class CustomAIPlatformExtension extends Extension
+{
+    public function updatePlatform(?PlatformInterface &$platform, string $type, string $apiKey, ?string $baseUrl): void
+    {
+        // Add a new provider…
+        if ($type === 'myprovider') {
+            $platform = \Symfony\AI\Platform\Bridge\SomeProvider\PlatformFactory::create($apiKey);
+        }
+        // …or override a built-in one, e.g. point 'openai' at a custom bridge.
+    }
+}
+```
+
+```yaml
+XD\SilverstripeAI\Services\AIClient:
+  extensions:
+    - App\Extensions\CustomAIPlatformExtension
+```
+
+Then set `AI_PLATFORM_TYPE="myprovider"` (plus `AI_MODEL`, and optional `model_pricing`). For a fully custom provider, implement Symfony AI's `PlatformInterface` yourself — see the [Symfony AI platform docs](https://symfony.com/doc/current/ai.html).
+
 ## Extending the controller
 
 By default the endpoint is **POST-only** and `AIController::assertAccess()` requires a logged-in member (returning `Security::permissionFailure()` otherwise). Subclass the controller to add your own permission logic — return an `HTTPResponse` to deny, or `null` to allow:
