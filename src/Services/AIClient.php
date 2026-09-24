@@ -4,6 +4,7 @@ namespace XD\SilverstripeAI\Services;
 
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
+use SilverStripe\Core\Extensible;
 use SilverStripe\Core\Injector\Injectable;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -16,6 +17,7 @@ class AIClient
 {
     use Injectable;
     use Configurable;
+    use Extensible;
 
     private static int $max_text_length = 5000;
     private static int $max_instructions_length = 1000;
